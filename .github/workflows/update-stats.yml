@@ -23,8 +23,6 @@ jobs:
         run: |
           curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}?fields=followers_count,follows_count,media_count&access_token=${IG_ACCESS_TOKEN}" -o account.json
 
-          curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=4&access_token=${IG_ACCESS_TOKEN}" -o media.json
-
           python3 - <<'PY'
           import json
           import os
@@ -33,14 +31,7 @@ jobs:
 
           with open('account.json') as f:
               account = json.load(f)
-          with open('media.json') as f:
-              media = json.load(f)
 
-          recent_posts = media.get('data', [])[:4]
-
-          # Instagram only gives a like count per individual post, so to get a
-          # true "total likes across everything he's posted" figure we have to
-          # page through every post and add up like_count ourselves.
           def fetch_json(url):
               with urllib.request.urlopen(url, timeout=30) as resp:
                   return json.loads(resp.read().decode())
@@ -50,29 +41,43 @@ jobs:
 
           total_likes = 0
           posts_counted = 0
+          recent_posts = []
+          # Safety cap on how many posts we'll scan while hunting for his 4
+          # most recent videos, in case he's posted a long run of photos.
+          MAX_POSTS_SCANNED = 200
+
           try:
               url = (
                   f"https://graph.instagram.com/v21.0/{ig_user_id}/media"
-                  f"?fields=like_count&limit=100&access_token={ig_token}"
+                  "?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count"
+                  f"&limit=25&access_token={ig_token}"
               )
-              while url:
+              while url and posts_counted < MAX_POSTS_SCANNED:
                   page = fetch_json(url)
                   for item in page.get('data', []):
                       total_likes += item.get('like_count') or 0
                       posts_counted += 1
+                      # Only videos have something to preview, so we specifically
+                      # collect the 4 most recent ones (posts come back newest
+                      # first), skipping over photos in between.
+                      if item.get('media_type') == 'VIDEO' and len(recent_posts) < 4:
+                          recent_posts.append(item)
                   url = page.get('paging', {}).get('next')
           except Exception as e:
               # If Instagram rate-limits or errors out partway through, don't
               # let that take down the whole stats update. Fall back to
-              # whatever total we'd already built up this run, or the
-              # previous value already on disk if we got nothing at all.
+              # whatever we'd already built up this run, or the previous
+              # values already on disk if we got nothing at all.
               print(f"Warning: stopped paging through posts early ({e})")
               if posts_counted == 0:
                   try:
                       with open('stats.json') as f:
-                          total_likes = json.load(f).get('total_likes', 0)
+                          old = json.load(f)
+                          total_likes = old.get('total_likes', 0)
+                          recent_posts = old.get('recent_posts', [])
                   except Exception:
                       total_likes = 0
+                      recent_posts = []
 
           output = {
               **account,
