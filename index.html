@@ -400,7 +400,6 @@
           <a href="#about">About Me</a>
           <a href="#stats">Follow</a>
           <a href="#work">What I Shoot</a>
-          <a href="#testimonials">Testimonials</a>
           <a href="#contact">Contact</a>
         </div>
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" type="button">
@@ -434,7 +433,7 @@
         <h3 class="name">John Velasco</h3>
         <div class="handle">@cinematiclife.17</div>
 
-        <p>Hi there! I'm a cinematography driven filmmaker who enjoys shooting life's daily moments with a cinematic flair. I produce visually driven content that focuses around intentional composition, movement, lighting and editing.</p>
+        <p>Hi there! I’m a cinematography driven filmmaker who enjoys shooting life's daily moments with a cinematic flair. I produce visually driven content that focuses around intentional composition, movement, lighting and editing.</p>
 
         <p>Some of my favorite things to shoot are cinematic lifestyle, sports /action, events, environmental art and filmmaking BTS. I love trying new things and shooting in unique ways that make each moment feel larger than life and cinematic.</p>
 
@@ -510,47 +509,10 @@
     </div>
   </section>
 
-  <section id="testimonials">
-    <div class="wrap">
-      <div class="section-kicker">KIND WORDS</div>
-      <h2 class="section-title">What People Say</h2>
-      <p class="section-sub">
-        Placeholder quotes for now — swap these for real ones from clients, brands, or event organizers whenever you're ready.
-      </p>
-
-      <div class="testimonial-grid">
-        <div class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"John captured our event better than we could've imagined. Every clip felt like a movie trailer."</p>
-          <div class="testimonial-author">
-            <span class="testimonial-name">Replace with a real name</span>
-            <span class="testimonial-role">Event organizer</span>
-          </div>
-        </div>
-        <div class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"Fast turnaround, great communication, and the final video was exactly the vibe we wanted."</p>
-          <div class="testimonial-author">
-            <span class="testimonial-name">Replace with a real name</span>
-            <span class="testimonial-role">Brand / business owner</span>
-          </div>
-        </div>
-        <div class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"Genuinely one of the most creative shooters I've worked with. Highly recommend."</p>
-          <div class="testimonial-author">
-            <span class="testimonial-name">Replace with a real name</span>
-            <span class="testimonial-role">Fellow creator</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <section id="contact">
     <div class="wrap">
       <div class="contact">
-        <h2 class="section-title">Let's Create Something</h2>
+        <h2 class="section-title">Let’s Create Something</h2>
         <p class="section-sub" style="margin-left:auto;margin-right:auto">Have an idea, project or moment you want captured with a cinematic flair? Fill this out and it'll land straight in the inbox.</p>
 
         <form class="contact-form" id="contact-form" action="https://formspree.io/f/xzezpgkr" method="POST">
@@ -676,6 +638,9 @@
     form.addEventListener('submit', function(e){
       var action = form.getAttribute('action') || '';
       if (action.indexOf('REPLACE_WITH_YOUR_FORM_ID') !== -1) {
+        // Form hasn't been connected to Formspree yet - let the normal
+        // mailto fallback link in the note below do the job instead of
+        // silently failing.
         return;
       }
       e.preventDefault();
@@ -703,6 +668,8 @@
     var grid = document.getElementById('recent-posts-grid');
     var heading = document.getElementById('recent-posts-heading');
 
+    // Show 4 skeleton placeholder cards immediately, replaced once real
+    // data arrives (or removed if the fetch fails).
     for (var s = 0; s < 4; s++) {
       var skel = document.createElement('div');
       skel.className = 'post-card post-card-skeleton';
@@ -727,8 +694,11 @@
           el.classList.remove('skeleton');
         }
 
+        // Supports the new multi-post "recent_posts" array, and falls back to
+        // the old single "latest_post" field so nothing breaks mid-transition.
         var posts = data.recent_posts || (data.latest_post ? [data.latest_post] : []);
 
+        // Clear the skeleton placeholders now that we have a real answer.
         grid.innerHTML = '';
 
         if (posts.length && grid) {
