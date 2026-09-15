@@ -2,8 +2,12 @@ name: Update Instagram Stats
 
 on:
   schedule:
-    # Runs every 4 hours. Change the cron expression below if you want a different frequency.
-    - cron: "0 */4 * * *"
+    # Runs every hour. Instagram's video URLs are short-lived signed links,
+    # so refreshing more often keeps them from expiring before someone
+    # actually scrolls to that post. Public repos get free/unlimited Actions
+    # minutes, so this costs nothing extra. Change if you want a different
+    # frequency.
+    - cron: "0 * * * *"
   workflow_dispatch: {}  # lets you also trigger it manually from the Actions tab
 
 permissions:
