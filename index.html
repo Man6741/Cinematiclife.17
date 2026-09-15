@@ -391,6 +391,10 @@
           <span class="platform-label">POSTS</span>
           <span id="posts-count" class="stat-number">--</span>
         </div>
+        <div class="platform stat-platform">
+          <span class="platform-label">TOTAL LIKES</span>
+          <span id="likes-count" class="stat-number">--</span>
+        </div>
       </div>
 
       <!-- Recent Posts grid: auto-fills from stats.json -->
@@ -456,6 +460,8 @@
       document.getElementById('followers-count').textContent = data.followers_count ?? '—';
       document.getElementById('following-count').textContent = data.follows_count ?? '—';
       document.getElementById('posts-count').textContent = data.media_count ?? '—';
+      document.getElementById('likes-count').textContent =
+        typeof data.total_likes === 'number' ? data.total_likes.toLocaleString() : '—';
 
       // Supports the new multi-post "recent_posts" array, and falls back to
       // the old single "latest_post" field so nothing breaks mid-transition.
