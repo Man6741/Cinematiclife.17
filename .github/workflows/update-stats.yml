@@ -23,7 +23,7 @@ jobs:
         run: |
           curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}?fields=followers_count,follows_count,media_count&access_token=${IG_ACCESS_TOKEN}" -o account.json
 
-          curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=4&access_token=${IG_ACCESS_TOKEN}" -o media.json
+          curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=10&access_token=${IG_ACCESS_TOKEN}" -o media.json
 
           python3 - <<'PY'
           import json
@@ -39,13 +39,18 @@ jobs:
           with open('media.json') as f:
               media = json.load(f)
 
-          recent_posts = media.get('data', [])[:4]
+          # Look at more than just the newest 4 - a brand new video can still
+          # be processing on Instagram's end and not have a playable link yet.
+          # We'll fill our 4 slots with the newest posts that are *actually*
+          # ready, skipping over any not-yet-ready video until it catches up
+          # on a later run.
+          candidates = media.get('data', [])[:10]
 
           # Instagram's media-list endpoint sometimes omits media_url for
           # video/Reels posts, even though the post itself has one. Asking
           # about that one post directly (by its own id) almost always
           # returns it, so patch in the missing links one at a time.
-          for post in recent_posts:
+          for post in candidates:
               needs_url = post.get('media_type') == 'VIDEO' and not post.get('media_url')
               if not needs_url:
                   continue
@@ -62,10 +67,17 @@ jobs:
                       post['thumbnail_url'] = single['thumbnail_url']
               except Exception as e:
                   # Don't fail the whole run over one post's video link -
-                  # it'll just fall back to a photo preview this cycle and
-                  # try again on the next run.
+                  # it'll just get skipped this cycle and reconsidered (or
+                  # replaced by something newer) on the next run.
                   print(f"Could not refetch media_url for {post['id']}: {e}")
               time.sleep(0.5)
+
+          def is_ready(post):
+              if post.get('media_type') == 'VIDEO':
+                  return bool(post.get('media_url'))
+              return True  # photos/carousels don't need a video link
+
+          recent_posts = [p for p in candidates if is_ready(p)][:4]
 
           output = {**account, 'recent_posts': recent_posts, 'updated_at': datetime.now(timezone.utc).isoformat()}
 
