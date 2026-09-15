@@ -205,38 +205,50 @@
   .stat-number{font-size:2.2rem;font-weight:900;color:var(--blue2)}
   .stat-platform{align-items:center;text-align:center}
 
-  .latest-post{
-    margin-top:20px;
+  .recent-posts-heading{
+    margin:34px 0 16px;
+    font-size:.78rem;
+    font-weight:900;
+    letter-spacing:.14em;
+    color:#59636d;
+  }
+  .recent-posts-grid{
     display:grid;
-    grid-template-columns:220px 1fr;
-    gap:24px;
-    align-items:center;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+  }
+  .post-card{
+    display:block;
     background:linear-gradient(145deg,#f8f3e9,#e1e9f0);
     border:1px solid var(--border);
-    border-radius:24px;
-    padding:20px;
+    border-radius:20px;
+    padding:14px;
     box-shadow:0 20px 60px rgba(38,47,56,.12);
+    transition:.2s transform;
   }
-  .latest-post-image{
+  .post-card:hover{transform:translateY(-3px)}
+  .post-card-image{
     width:100%;
     aspect-ratio:1/1;
     object-fit:cover;
-    border-radius:16px;
+    border-radius:14px;
     background:var(--panel2);
     display:block;
   }
-  .latest-post-body{min-width:0}
-  .latest-post-caption{
+  .post-card-caption{
     color:#4e5963;
-    font-size:.95rem;
-    margin:0 0 14px;
+    font-size:.85rem;
+    margin:12px 0 0;
     display:-webkit-box;
     -webkit-line-clamp:3;
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
-  @media (max-width:600px){
-    .latest-post{grid-template-columns:1fr;text-align:center}
+  @media (max-width:900px){
+    .recent-posts-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:480px){
+    .recent-posts-grid{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -328,15 +340,9 @@
         </div>
       </div>
 
-      <!-- Latest Post card: auto-fills from stats.json -->
-      <div class="latest-post" id="latest-post" style="display:none">
-        <img id="latest-post-image" class="latest-post-image" src="" alt="Latest Instagram post">
-        <div class="latest-post-body">
-          <span class="platform-label">LATEST POST</span>
-          <p id="latest-post-caption" class="latest-post-caption"></p>
-          <a id="latest-post-link" class="btn primary" href="#" target="_blank" rel="noopener">View on Instagram</a>
-        </div>
-      </div>
+      <!-- Recent Posts grid: auto-fills from stats.json -->
+      <div class="recent-posts-heading" id="recent-posts-heading" style="display:none">RECENT POSTS</div>
+      <div class="recent-posts-grid" id="recent-posts-grid"></div>
     </div>
   </section>
 
@@ -398,13 +404,41 @@
       document.getElementById('following-count').textContent = data.follows_count ?? '—';
       document.getElementById('posts-count').textContent = data.media_count ?? '—';
 
-      var post = data.latest_post;
-      if (post && (post.media_url || post.thumbnail_url)) {
-        var imageSrc = post.media_type === 'VIDEO' ? post.thumbnail_url : post.media_url;
-        document.getElementById('latest-post-image').src = imageSrc;
-        document.getElementById('latest-post-caption').textContent = post.caption || '';
-        document.getElementById('latest-post-link').href = post.permalink || '#';
-        document.getElementById('latest-post').style.display = 'grid';
+      // Supports the new multi-post "recent_posts" array, and falls back to
+      // the old single "latest_post" field so nothing breaks mid-transition.
+      var posts = data.recent_posts || (data.latest_post ? [data.latest_post] : []);
+      var grid = document.getElementById('recent-posts-grid');
+      var heading = document.getElementById('recent-posts-heading');
+
+      if (posts.length && grid) {
+        posts.slice(0, 4).forEach(function(post){
+          if (!post || (!post.media_url && !post.thumbnail_url)) return;
+
+          var imageSrc = post.media_type === 'VIDEO' ? post.thumbnail_url : (post.media_url || post.thumbnail_url);
+
+          var card = document.createElement('a');
+          card.className = 'post-card';
+          card.href = post.permalink || '#';
+          card.target = '_blank';
+          card.rel = 'noopener';
+
+          var img = document.createElement('img');
+          img.className = 'post-card-image';
+          img.src = imageSrc;
+          img.alt = 'Instagram post';
+
+          var caption = document.createElement('p');
+          caption.className = 'post-card-caption';
+          caption.textContent = post.caption || '';
+
+          card.appendChild(img);
+          card.appendChild(caption);
+          grid.appendChild(card);
+        });
+
+        if (grid.children.length && heading) {
+          heading.style.display = 'block';
+        }
       }
     })
     .catch(error => {
