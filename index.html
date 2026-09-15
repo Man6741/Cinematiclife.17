@@ -484,7 +484,10 @@
             video = document.createElement('video');
             video.className = 'post-card-video';
             video.muted = true;
-            video.loop = true;
+            // Looping is handled manually below so we can loop only the first
+            // 45% of the clip (a short, Netflix-style preview) instead of the
+            // whole thing.
+            video.loop = false;
             video.playsInline = true;
             video.preload = 'none';
             video.setAttribute('poster', posterSrc);
@@ -492,6 +495,22 @@
             // so we don't download every video up front.
             video.dataset.src = post.media_url;
             media.appendChild(video);
+
+            // Once we know how long the clip is, cap playback at 45% of its
+            // length and loop back to the start when it hits that point.
+            var previewLimit = null;
+            video.addEventListener('loadedmetadata', function(){
+              if (video.duration && isFinite(video.duration)) {
+                previewLimit = video.duration * 0.45;
+              }
+            });
+            video.addEventListener('timeupdate', function(){
+              if (previewLimit && video.currentTime >= previewLimit) {
+                video.currentTime = 0;
+                var replay = video.play();
+                if (replay && replay.catch) { replay.catch(function(){}); }
+              }
+            });
 
             // A clear, readable label (not just a small icon) so it's obvious
             // at a glance that this is a video, and obvious when it's playing.
