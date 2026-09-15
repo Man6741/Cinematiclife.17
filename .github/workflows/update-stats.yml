@@ -27,7 +27,12 @@ jobs:
 
           python3 - <<'PY'
           import json
+          import os
+          import time
+          import urllib.request
           from datetime import datetime, timezone
+
+          IG_ACCESS_TOKEN = os.environ['IG_ACCESS_TOKEN']
 
           with open('account.json') as f:
               account = json.load(f)
@@ -35,6 +40,32 @@ jobs:
               media = json.load(f)
 
           recent_posts = media.get('data', [])[:4]
+
+          # Instagram's media-list endpoint sometimes omits media_url for
+          # video/Reels posts, even though the post itself has one. Asking
+          # about that one post directly (by its own id) almost always
+          # returns it, so patch in the missing links one at a time.
+          for post in recent_posts:
+              needs_url = post.get('media_type') == 'VIDEO' and not post.get('media_url')
+              if not needs_url:
+                  continue
+              url = (
+                  f"https://graph.instagram.com/v21.0/{post['id']}"
+                  f"?fields=media_url,thumbnail_url&access_token={IG_ACCESS_TOKEN}"
+              )
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as resp:
+                      single = json.load(resp)
+                  if single.get('media_url'):
+                      post['media_url'] = single['media_url']
+                  if single.get('thumbnail_url') and not post.get('thumbnail_url'):
+                      post['thumbnail_url'] = single['thumbnail_url']
+              except Exception as e:
+                  # Don't fail the whole run over one post's video link -
+                  # it'll just fall back to a photo preview this cycle and
+                  # try again on the next run.
+                  print(f"Could not refetch media_url for {post['id']}: {e}")
+              time.sleep(0.5)
 
           output = {**account, 'recent_posts': recent_posts, 'updated_at': datetime.now(timezone.utc).isoformat()}
 
