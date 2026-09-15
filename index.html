@@ -551,9 +551,11 @@
           // All cards (photo or video), on all devices: scrolling into view
           // triggers the "come alive" lift/scale, like a Netflix hover card.
           // Video cards additionally start playing their preview.
-          // A generous threshold + rootMargin means it triggers as soon as a
-          // card is comfortably on screen, not only once it's perfectly
-          // centered — easier to catch at any scroll speed.
+          // A low threshold + generous rootMargin means it triggers with
+          // just a small scroll - a card doesn't need to be mostly on
+          // screen, just barely peeking into view. This makes it much
+          // easier to trigger for anyone scrolling slowly or in small
+          // steps (e.g. older users, or anyone not scrolling fast/far).
           if ('IntersectionObserver' in window) {
             var observer = new IntersectionObserver(function(entries){
               entries.forEach(function(entry){
@@ -565,7 +567,7 @@
                   if (stopPreview) stopPreview();
                 }
               });
-            }, { threshold: 0.45, rootMargin: '0px 0px -10% 0px' });
+            }, { threshold: 0.1, rootMargin: '150px 0px 150px 0px' });
             observer.observe(card);
           }
         });
