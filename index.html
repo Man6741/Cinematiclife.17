@@ -220,16 +220,17 @@
   .post-card{
     display:block;
     background:linear-gradient(145deg,#f8f3e9,#e1e9f0);
-    border:1px solid var(--border);
+    border:2px solid var(--border);
     border-radius:20px;
     padding:14px;
     box-shadow:0 20px 60px rgba(38,47,56,.12);
-    transition:.35s transform ease,.35s box-shadow ease;
+    transition:.45s transform ease,.45s box-shadow ease,.45s border-color ease;
   }
   .post-card:hover,
   .post-card.is-active{
-    transform:translateY(-3px) scale(1.035);
-    box-shadow:0 28px 80px rgba(38,47,56,.22);
+    transform:translateY(-5px) scale(1.06);
+    box-shadow:0 0 0 4px rgba(57,120,198,.35),0 30px 90px rgba(38,47,56,.3);
+    border-color:var(--blue);
     z-index:2;
   }
   .post-card-media{
@@ -258,24 +259,28 @@
   .post-card.is-active .post-card-video{
     opacity:1;
   }
-  .post-card-play{
+  .post-card-badge{
     position:absolute;
-    right:10px;
+    left:10px;
     bottom:10px;
-    width:26px;
-    height:26px;
-    border-radius:50%;
-    background:rgba(8,10,13,.55);
     display:flex;
     align-items:center;
-    justify-content:center;
-    opacity:1;
-    transition:opacity .3s ease;
-    pointer-events:none;
+    gap:6px;
+    padding:7px 13px;
+    border-radius:999px;
+    background:rgba(8,10,13,.72);
+    color:#fff;
+    font-size:.8rem;
+    font-weight:800;
+    letter-spacing:.02em;
+    transition:.3s background ease,.3s transform ease;
   }
-  .post-card-play svg{width:11px;height:11px}
-  .post-card:hover .post-card-play,
-  .post-card.is-active .post-card-play{opacity:0}
+  .post-card-badge svg{width:12px;height:12px;flex:none}
+  .post-card:hover .post-card-badge,
+  .post-card.is-active .post-card-badge{
+    background:var(--blue2);
+    transform:scale(1.05);
+  }
   .post-card-caption{
     color:#4e5963;
     font-size:.85rem;
@@ -474,6 +479,7 @@
           media.appendChild(img);
 
           var video = null;
+          var badge = null;
           if (isVideo) {
             video = document.createElement('video');
             video.className = 'post-card-video';
@@ -487,10 +493,12 @@
             video.dataset.src = post.media_url;
             media.appendChild(video);
 
-            var playBadge = document.createElement('span');
-            playBadge.className = 'post-card-play';
-            playBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>';
-            media.appendChild(playBadge);
+            // A clear, readable label (not just a small icon) so it's obvious
+            // at a glance that this is a video, and obvious when it's playing.
+            badge = document.createElement('span');
+            badge.className = 'post-card-badge';
+            badge.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg><span>Video</span>';
+            media.appendChild(badge);
           }
 
           var caption = document.createElement('p');
@@ -501,37 +509,45 @@
           card.appendChild(caption);
           grid.appendChild(card);
 
+          var startPreview = null;
+          var stopPreview = null;
           if (video) {
-            var startPreview = function(){
+            startPreview = function(){
               if (!video.src) { video.src = video.dataset.src; }
               var playPromise = video.play();
               if (playPromise && playPromise.catch) { playPromise.catch(function(){}); }
+              if (badge) { badge.innerHTML = '<span>▶ Playing</span>'; }
             };
-            var stopPreview = function(){
+            stopPreview = function(){
               video.pause();
               video.currentTime = 0;
+              if (badge) { badge.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg><span>Video</span>'; }
             };
 
             // Desktop: hover to preview.
             card.addEventListener('mouseenter', startPreview);
             card.addEventListener('mouseleave', stopPreview);
+          }
 
-            // All devices, including mobile: scrolling the card into view previews it,
-            // like a Netflix-style autoplay-on-scroll.
-            if ('IntersectionObserver' in window) {
-              var observer = new IntersectionObserver(function(entries){
-                entries.forEach(function(entry){
-                  if (entry.isIntersecting) {
-                    card.classList.add('is-active');
-                    startPreview();
-                  } else {
-                    card.classList.remove('is-active');
-                    stopPreview();
-                  }
-                });
-              }, { threshold: 0.6 });
-              observer.observe(card);
-            }
+          // All cards (photo or video), on all devices: scrolling into view
+          // triggers the "come alive" lift/scale, like a Netflix hover card.
+          // Video cards additionally start playing their preview.
+          // A generous threshold + rootMargin means it triggers as soon as a
+          // card is comfortably on screen, not only once it's perfectly
+          // centered — easier to catch at any scroll speed.
+          if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function(entries){
+              entries.forEach(function(entry){
+                if (entry.isIntersecting) {
+                  card.classList.add('is-active');
+                  if (startPreview) startPreview();
+                } else {
+                  card.classList.remove('is-active');
+                  if (stopPreview) stopPreview();
+                }
+              });
+            }, { threshold: 0.45, rootMargin: '0px 0px -10% 0px' });
+            observer.observe(card);
           }
         });
 
