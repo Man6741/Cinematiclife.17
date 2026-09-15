@@ -27,6 +27,8 @@ jobs:
 
           python3 - <<'PY'
           import json
+          import os
+          import urllib.request
           from datetime import datetime, timezone
 
           with open('account.json') as f:
@@ -36,7 +38,48 @@ jobs:
 
           recent_posts = media.get('data', [])[:4]
 
-          output = {**account, 'recent_posts': recent_posts, 'updated_at': datetime.now(timezone.utc).isoformat()}
+          # Instagram only gives a like count per individual post, so to get a
+          # true "total likes across everything he's posted" figure we have to
+          # page through every post and add up like_count ourselves.
+          def fetch_json(url):
+              with urllib.request.urlopen(url, timeout=30) as resp:
+                  return json.loads(resp.read().decode())
+
+          ig_user_id = os.environ['IG_USER_ID']
+          ig_token = os.environ['IG_ACCESS_TOKEN']
+
+          total_likes = 0
+          posts_counted = 0
+          try:
+              url = (
+                  f"https://graph.instagram.com/v21.0/{ig_user_id}/media"
+                  f"?fields=like_count&limit=100&access_token={ig_token}"
+              )
+              while url:
+                  page = fetch_json(url)
+                  for item in page.get('data', []):
+                      total_likes += item.get('like_count') or 0
+                      posts_counted += 1
+                  url = page.get('paging', {}).get('next')
+          except Exception as e:
+              # If Instagram rate-limits or errors out partway through, don't
+              # let that take down the whole stats update. Fall back to
+              # whatever total we'd already built up this run, or the
+              # previous value already on disk if we got nothing at all.
+              print(f"Warning: stopped paging through posts early ({e})")
+              if posts_counted == 0:
+                  try:
+                      with open('stats.json') as f:
+                          total_likes = json.load(f).get('total_likes', 0)
+                  except Exception:
+                      total_likes = 0
+
+          output = {
+              **account,
+              'recent_posts': recent_posts,
+              'total_likes': total_likes,
+              'updated_at': datetime.now(timezone.utc).isoformat(),
+          }
 
           with open('stats.json', 'w') as f:
               json.dump(output, f, indent=2)
