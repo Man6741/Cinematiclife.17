@@ -532,16 +532,41 @@
           var startPreview = null;
           var stopPreview = null;
           if (video) {
+            var videoFailed = false;
+
+            // Only say "Playing" once the browser confirms it's actually
+            // playing — not just because we asked it to. If the signed
+            // Instagram video link has expired (they're short-lived), fall
+            // back to the same photo-style zoom instead of a dead label.
+            video.addEventListener('playing', function(){
+              if (badge) { badge.innerHTML = '<span>▶ Playing</span>'; }
+            });
+            video.addEventListener('error', function(){
+              videoFailed = true;
+              video.style.display = 'none';
+              if (badge) { badge.innerHTML = '<span>🔍 Zooming in</span>'; }
+            });
+
             startPreview = function(){
+              if (videoFailed) {
+                if (badge) { badge.innerHTML = '<span>🔍 Zooming in</span>'; }
+                return;
+              }
               if (!video.src) { video.src = video.dataset.src; }
               var playPromise = video.play();
-              if (playPromise && playPromise.catch) { playPromise.catch(function(){}); }
-              if (badge) { badge.innerHTML = '<span>▶ Playing</span>'; }
+              if (playPromise && playPromise.catch) {
+                playPromise.catch(function(){
+                  videoFailed = true;
+                  if (badge) { badge.innerHTML = '<span>🔍 Zooming in</span>'; }
+                });
+              }
             };
             stopPreview = function(){
               video.pause();
               video.currentTime = 0;
-              if (badge) { badge.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg><span>Video</span>'; }
+              if (badge && !videoFailed) {
+                badge.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg><span>Video</span>';
+              }
             };
           } else {
             startPreview = function(){
