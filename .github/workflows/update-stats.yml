@@ -23,7 +23,7 @@ jobs:
         run: |
           curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}?fields=followers_count,follows_count,media_count&access_token=${IG_ACCESS_TOKEN}" -o account.json
 
-          curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=1&access_token=${IG_ACCESS_TOKEN}" -o media.json
+          curl -s "https://graph.instagram.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=4&access_token=${IG_ACCESS_TOKEN}" -o media.json
 
           python3 - <<'PY'
           import json
@@ -34,9 +34,9 @@ jobs:
           with open('media.json') as f:
               media = json.load(f)
 
-          latest = media.get('data', [{}])[0] if media.get('data') else {}
+          recent_posts = media.get('data', [])[:4]
 
-          output = {**account, 'latest_post': latest, 'updated_at': datetime.now(timezone.utc).isoformat()}
+          output = {**account, 'recent_posts': recent_posts, 'updated_at': datetime.now(timezone.utc).isoformat()}
 
           with open('stats.json', 'w') as f:
               json.dump(output, f, indent=2)
