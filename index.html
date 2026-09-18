@@ -498,10 +498,6 @@
           <span class="platform-label">TOTAL LIKES</span>
           <span id="likes-count" class="stat-number skeleton">--</span>
         </div>
-        <div class="platform stat-platform">
-          <span class="platform-label">HOW MANY PEOPLE VIEWED WEBSITE</span>
-          <span id="clicks-count" class="stat-number">0</span>
-        </div>
       </div>
 
       <!-- Recent Posts grid: auto-fills from stats.json -->
@@ -679,46 +675,7 @@
   })();
 </script>
 
-<!-- Shared Supabase website view counter -->
-<script>
-(async function () {
-  const SUPABASE_URL = "https://ulevbzuonltugdcxwmis.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_1jhHxNviOkxc73Q7V7J4Nw_AbSFq9PX
 
-svg
-
-svg
-
-";
-
-  const counter = document.getElementById("clicks-count");
-
-  try {
-    const response = await fetch(
-      SUPABASE_URL + "/functions/v1/count-view",
-      {
-        method: "POST",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Counter request failed");
-    }
-
-    const data = await response.json();
-
-    if (counter && typeof data.views === "number") {
-      counter.textContent = data.views.toLocaleString();
-    }
-  } catch (error) {
-    console.error("Website view counter error:", error);
-  }
-})();
-</script>
 
 <script>
   // --- Live stats + recent posts, with loading skeletons ---
